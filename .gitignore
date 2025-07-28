@@ -1,0 +1,28 @@
+env\
+.env\
+document_portal.egg-info\
+*.ipynb_checkpoints/
+notebook/*.ipynb
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.log
+*.sqlite3
+
+# Virtual environments
+env/
+venv/
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints/
+
+# Secrets
+.env
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
