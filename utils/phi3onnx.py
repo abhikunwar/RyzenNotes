@@ -5,7 +5,7 @@ from pydantic import PrivateAttr
 
 class Phi3ONNX_LLM(LLM):
     model_path: str = "../cpu_and_mobile/cpu-int4-rtn-block-32-acc-level-4"
-    max_length: int = 2048
+    max_length: int = 1000
     temperature: float = 0.7
 
     _model: Any = PrivateAttr()
@@ -30,11 +30,24 @@ class Phi3ONNX_LLM(LLM):
         chat_prompt = f"<user>\n{prompt}<end>\n<assistant>"
         input_tokens = self._tokenizer.encode(chat_prompt)
 
+        total_max_length = kwargs.get("max_length", self.max_length)
+        temperature = kwargs.get("temperature", self.temperature)
+
+        # Reserve space for output tokens
+        output_token_budget = 256  # You can tune this
+        input_token_limit = total_max_length - output_token_budget
+
+        if len(input_tokens) > input_token_limit:
+            print(f"⚠️ Prompt too long ({len(input_tokens)} tokens), truncating to {input_token_limit}")
+            input_tokens = input_tokens[:input_token_limit]
+
+
+
         # Set up generation params
         params = og.GeneratorParams(self._model)
         params.set_search_options(
-            max_length=kwargs.get("max_length", self.max_length),
-            temperature=kwargs.get("temperature", self.temperature)
+            max_length=total_max_length,
+            temperature=temperature
         )
 
         # Create generator
@@ -42,7 +55,7 @@ class Phi3ONNX_LLM(LLM):
         generator.append_tokens(input_tokens)
 
         # Generate tokens
-        for _ in range(self.max_length):
+        for _ in range(output_token_budget):
             if generator.is_done():
                 break
             generator.generate_next_token()
@@ -59,10 +72,10 @@ class Phi3ONNX_LLM(LLM):
             output_text = output_text[len(chat_prompt):]
 
         # Handle stop words
-        if stop:
-            for word in stop:
-                if word in output_text:
-                    output_text = output_text.split(word)[0]
+        # if stop:
+        #     for word in stop:
+        #         if word in output_text:
+        #             output_text = output_text.split(word)[0]
 
         return output_text.strip()
 
@@ -77,6 +90,6 @@ if __name__ == "__main__":
     response = llm.invoke(
         "Write a poem about artificial intelligence.",
         temperature=0.9,
-        max_length=100
+        max_length=1000
     )
     print(response)
